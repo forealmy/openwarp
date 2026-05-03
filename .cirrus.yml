@@ -1,0 +1,35 @@
+task:
+  name: Build OpenWarp x86_64 DMG
+  alias: build
+  macos_instance:
+    image: ghcr.io/cirruslabs/macos-runner:sequoia
+  env:
+    CARGO_TERM_COLOR: always
+    MACOSX_DEPLOYMENT_TARGET: "10.14"
+    RUSTFLAGS: -C debuginfo=line-tables-only
+  build_script: |
+    set -ex
+    echo "=== Installing Rust ==="
+    rustup toolchain install 1.92.0 --profile minimal
+    rustup default 1.92.0
+    rustup target add x86_64-apple-darwin
+
+    echo "=== Installing deps ==="
+    xcodebuild -downloadComponent MetalToolchain 2>/dev/null || true
+    brew install create-dmg
+
+    echo "=== Installing cargo-bundle ==="
+    script/install_cargo_bundle
+
+    echo "=== Building x86_64 bundle ==="
+    script/bundle \
+      --channel oss \
+      --arch x86_64 \
+      --nosign \
+      --dmg-name-suffix x86_64
+
+    echo "=== DMG built ==="
+    ls -lh target/x86_64-apple-darwin/release-lto/bundle/osx/OpenWarp-x86_64.dmg
+
+  dmg_artifacts:
+    path: target/x86_64-apple-darwin/release-lto/bundle/osx/OpenWarp-x86_64.dmg
