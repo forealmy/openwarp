@@ -27,18 +27,14 @@ jobs:
         run: |
           rustup toolchain install 1.92.0 --profile minimal
           rustup default 1.92.0
-          # 显式添加目标，虽然 windows-latest 默认就是 x86_64，但显式声明是好习惯
           rustup target add x86_64-pc-windows-msvc
 
       - name: Install cargo-binstall
         uses: cargo-bins/cargo-binstall@dc19f1e48450eefe5a29b8da6c6b00a87d730b37
 
       - name: Install cargo-bundle
-        # Windows 环境下可能需要指定 shell 或者确保脚本兼容性
-        # 如果 script/install_cargo_bundle 是 bash 脚本，可能需要 Git Bash
-        # 如果是 powershell 或 bat 脚本则直接运行
         run: script/install_cargo_bundle
-        shell: bash # 如果脚本是 sh 格式，请保留此项；如果是 ps1，请改为 pwsh
+        shell: bash
 
       - name: Build Windows bundle
         run: |
@@ -47,13 +43,12 @@ jobs:
             --arch x86_64 `
             --nosign `
             --dmg-name-suffix x86_64
-        shell: pwsh # 使用 PowerShell 以支持反引号换行符
+        shell: pwsh
 
-      - name: Upload Artifact
+      - name: Upload Artifact (Fixed)
         uses: actions/upload-artifact@v4
         with:
           name: OpenWarp-Windows-x86_64
-          # 请根据实际构建产物路径调整下方路径
-          # Windows 下通常生成 .exe 或 .msi，而非 .dmg
-          path: target/x86_64-pc-windows-msvc/release-lto/bundle/windows/OpenWarp-x86_64.exe
+          # 关键修复：上传整个 bundle 目录，而不是猜测具体的文件名
+          path: target/x86_64-pc-windows-msvc/release-lto/bundle/windows/**
           retention-days: 7
