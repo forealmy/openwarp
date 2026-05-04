@@ -1,4 +1,4 @@
-name: Build OpenWarp for Windows
+name: Build OpenWarp for Windows (Debug)
 
 on:
   workflow_dispatch:
@@ -12,6 +12,8 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  # 增加全局环境变量，确保 Rust 编译细节可见
+  RUST_BACKTRACE: full
 
 jobs:
   build:
@@ -36,8 +38,11 @@ jobs:
         run: script/install_cargo_bundle
         shell: bash
 
-      - name: Build Windows bundle
+      - name: Build Windows bundle (Verbose)
+        # 关键修改：添加 V=s 以查看详细编译日志
         run: |
+          # 尝试设置环境变量以启用详细输出
+          $env:V = "s"
           script/bundle `
             --channel oss `
             --arch x86_64 `
@@ -45,10 +50,26 @@ jobs:
             --dmg-name-suffix x86_64
         shell: pwsh
 
-      - name: Upload Artifact (Fixed)
+      - name: Debug: List Build Output
+        # 关键修改：在上传前强制检查目录内容
+        run: |
+          Write-Host "🔍 Checking target directory..."
+          $targetDir = "target/x86_64-pc-windows-msvc/release-lto/bundle/windows"
+          
+          if (Test-Path $targetDir) {
+            Write-Host "Directory exists. Contents:"
+            Get-ChildItem -Path $targetDir -Recurse
+          } else {
+            Write-Host "❌ Directory does not exist: $targetDir"
+            # 如果目录不存在，强制报错停止流程
+            exit 1
+          }
+        shell: pwsh
+
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: OpenWarp-Windows-x86_64
-          # 关键修复：上传整个 bundle 目录，而不是猜测具体的文件名
+          # 使用通配符，防止文件名不匹配
           path: target/x86_64-pc-windows-msvc/release-lto/bundle/windows/**
           retention-days: 7
