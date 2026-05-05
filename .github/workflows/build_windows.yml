@@ -12,7 +12,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  # 增加全局环境变量，确保 Rust 编译细节可见
+  # 开启 Rust 的详细日志，方便排查编译错误
   RUST_BACKTRACE: full
 
 jobs:
@@ -39,10 +39,11 @@ jobs:
         shell: bash
 
       - name: Build Windows bundle (Verbose)
-        # 关键修改：添加 V=s 以查看详细编译日志
+        # 关键：添加 V=s 环境变量，让 Cargo 输出详细的编译指令
         run: |
-          # 尝试设置环境变量以启用详细输出
+          Write-Host "Starting build with verbose output..."
           $env:V = "s"
+          # 注意：如果你的 script/bundle 是纯 Shell 脚本，这里可能会因为换行符报错
           script/bundle `
             --channel oss `
             --arch x86_64 `
@@ -50,18 +51,18 @@ jobs:
             --dmg-name-suffix x86_64
         shell: pwsh
 
-      - name: Debug: List Build Output
-        # 关键修改：在上传前强制检查目录内容
+      - name: Debug: Check Build Output
+        # 关键：在上传前强制检查目录是否存在以及里面有什么文件
         run: |
-          Write-Host "🔍 Checking target directory..."
+          Write-Host "🔍 Checking target directory contents..."
           $targetDir = "target/x86_64-pc-windows-msvc/release-lto/bundle/windows"
           
           if (Test-Path $targetDir) {
-            Write-Host "Directory exists. Contents:"
-            Get-ChildItem -Path $targetDir -Recurse
+            Write-Host "✅ Directory exists. Listing files:"
+            Get-ChildItem -Path $targetDir -Recurse | ForEach-Object { Write-Host $_.FullName }
           } else {
-            Write-Host "❌ Directory does not exist: $targetDir"
-            # 如果目录不存在，强制报错停止流程
+            Write-Host "❌ ERROR: Directory does not exist: $targetDir"
+            Write-Host "This means the build script failed or output to a different location."
             exit 1
           }
         shell: pwsh
@@ -70,6 +71,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: OpenWarp-Windows-x86_64
-          # 使用通配符，防止文件名不匹配
+          # 使用通配符，确保能抓取到任何生成的文件
           path: target/x86_64-pc-windows-msvc/release-lto/bundle/windows/**
           retention-days: 7
