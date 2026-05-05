@@ -12,7 +12,6 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  # 开启 Rust 的详细日志，方便排查编译错误
   RUST_BACKTRACE: full
 
 jobs:
@@ -39,11 +38,9 @@ jobs:
         shell: bash
 
       - name: Build Windows bundle (Verbose)
-        # 关键：添加 V=s 环境变量，让 Cargo 输出详细的编译指令
         run: |
           Write-Host "Starting build with verbose output..."
           $env:V = "s"
-          # 注意：如果你的 script/bundle 是纯 Shell 脚本，这里可能会因为换行符报错
           script/bundle `
             --channel oss `
             --arch x86_64 `
@@ -52,7 +49,6 @@ jobs:
         shell: pwsh
 
       - name: Debug: Check Build Output
-        # 关键：在上传前强制检查目录是否存在以及里面有什么文件
         run: |
           Write-Host "🔍 Checking target directory contents..."
           $targetDir = "target/x86_64-pc-windows-msvc/release-lto/bundle/windows"
@@ -62,7 +58,6 @@ jobs:
             Get-ChildItem -Path $targetDir -Recurse | ForEach-Object { Write-Host $_.FullName }
           } else {
             Write-Host "❌ ERROR: Directory does not exist: $targetDir"
-            Write-Host "This means the build script failed or output to a different location."
             exit 1
           }
         shell: pwsh
@@ -71,6 +66,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: OpenWarp-Windows-x86_64
-          # 使用通配符，确保能抓取到任何生成的文件
-          path: target/x86_64-pc-windows-msvc/release-lto/bundle/windows/**
+          # 修复点：使用 '>' 符号将长路径折叠为一行，避免 YAML 语法错误
+          path: >
+            target/x86_64-pc-windows-msvc/release-lto/bundle/windows/**
           retention-days: 7
